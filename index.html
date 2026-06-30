@@ -328,7 +328,8 @@ const chipsEl=document.getElementById('chips');
 const summaryEl=document.getElementById('summary');
 const topfill=document.getElementById('topfill');
 
-function render(){
+function render(){ try{ renderInner(); }catch(e){ console.warn('render error',e); } }
+function renderInner(){
   const c=cards[cur], rgb=hexToRgb(c.c), dk=darken(c.c,0.12);
   const isDone=done.includes(c.w), isRev=revealed[c.w];
 
@@ -371,8 +372,8 @@ function render(){
 
   const rb=document.getElementById('revealBtn');if(rb)rb.onclick=()=>{revealed[c.w]=true;render();};
   const rs=document.getElementById('resetBtn');if(rs)rs.onclick=()=>{revealed[c.w]=false;render();};
-  document.getElementById('doneBtn').onclick=()=>{if(done.includes(c.w))done=done.filter(x=>x!==c.w);else done=[...done,c.w];save('md_done',done);render();};
-  if(c.game)wireWidget(c);
+  const db=document.getElementById('doneBtn');if(db)db.onclick=()=>{if(done.includes(c.w))done=done.filter(x=>x!==c.w);else done=[...done,c.w];save('md_done',done);render();};
+  if(c.game && isRev){requestAnimationFrame(()=>{try{wireWidget(c);}catch(e){}});}
 
   counterEl.textContent=`${String(cur+1).padStart(2,'0')} / ${cards.length}`;
   document.getElementById('prev').disabled=cur===0;
@@ -414,6 +415,7 @@ function renderWidget(c){
 function wireWidget(c){
   if(c.game==='cpu'){
     const p=document.getElementById('cpuPrice'),u=document.getElementById('cpuUses'),o=document.getElementById('cpuOut'),v=document.getElementById('cpuVerdict');
+    if(!p||!u||!o||!v)return;
     const upd=()=>{const pr=+p.value||0,us=+u.value||0;if(us<=0){o.textContent='\u2014';v.textContent='';return;}const cpu=pr/us;o.textContent='RM'+(cpu>=10?fmt(cpu):cpu.toFixed(2));v.textContent=cpu<=5?'\u2728 brilliant value':cpu<=20?'\ud83d\udc4d worth it':cpu<=50?'\ud83e\udd14 think about it':'\ud83d\udcb8 that\u2019s the pricey one';};
     p.oninput=upd;u.oninput=upd;
     document.querySelectorAll('.mini-chip').forEach(ch=>ch.onclick=()=>{p.value=ch.dataset.p;u.value=ch.dataset.u;upd();});
@@ -421,16 +423,15 @@ function wireWidget(c){
   }
   if(c.game==='compound'){
     const m=document.getElementById('cMonthly'),y=document.getElementById('cYears');
+    if(!m||!y)return;
+    const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+    const setW=(id,w)=>{const el=document.getElementById(id);if(el)el.style.width=w;};
     const upd=()=>{
       const mo=+m.value,yr=+y.value,r=0.07/12,n=yr*12;
       const fv=mo*((Math.pow(1+r,n)-1)/r),inp=mo*n,gr=fv-inp;
-      document.getElementById('cMo').textContent='RM'+fmt(mo);
-      document.getElementById('cYr').textContent=yr+' years';
-      document.getElementById('cOut').textContent='RM'+fmt(fv);
-      document.getElementById('cIn').textContent='RM'+fmt(inp);
-      document.getElementById('cGrow').textContent='RM'+fmt(gr);
-      document.getElementById('cBarIn').style.width=(inp/fv*100)+'%';
-      document.getElementById('cBarGrow').style.width=(gr/fv*100)+'%';
+      set('cMo','RM'+fmt(mo));set('cYr',yr+' years');set('cOut','RM'+fmt(fv));
+      set('cIn','RM'+fmt(inp));set('cGrow','RM'+fmt(gr));
+      setW('cBarIn',(inp/fv*100)+'%');setW('cBarGrow',(gr/fv*100)+'%');
     };
     m.oninput=upd;y.oninput=upd;upd();
   }
